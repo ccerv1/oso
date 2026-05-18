@@ -1,0 +1,837 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Carl's Brain Map — Kariba Labs</title>
+<style>
+  :root {
+    --bg: #0f1117; --surface: #1a1d27; --surface2: #232633;
+    --border: #2e3244; --text: #e2e4ed; --text-dim: #8b8fa3;
+    --accent: #6c8cff; --accent-dim: rgba(108,140,255,0.12);
+    --green: #4ade80; --green-dim: rgba(74,222,128,0.10);
+    --amber: #fbbf24; --amber-dim: rgba(251,191,36,0.10);
+    --red: #f87171; --red-dim: rgba(248,113,113,0.10);
+    --purple: #a78bfa; --purple-dim: rgba(167,139,250,0.10);
+    --cyan: #22d3ee; --pink: #f472b6;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: var(--bg); color: var(--text); line-height: 1.5;
+    padding: 1.25rem 2rem; max-width: 1400px; margin: 0 auto;
+  }
+  h1 { font-size: 1.4rem; font-weight: 700; margin-bottom: 0.1rem; }
+  .tagline { color: var(--text-dim); font-size: 0.78rem; margin-bottom: 1rem; }
+
+  /* ── Pipeline ── */
+  .pipeline { display: flex; gap: 3px; margin-bottom: 1.25rem; overflow-x: auto; }
+  .pipe-stage {
+    flex: 1; min-width: 105px; padding: 0.45rem 0.5rem;
+    background: var(--surface); border: 2px solid var(--border); border-radius: 8px;
+    cursor: pointer; transition: all 0.15s; text-align: center; position: relative;
+  }
+  .pipe-stage:hover { border-color: var(--accent); }
+  .pipe-stage.active { border-color: var(--accent); background: var(--accent-dim); }
+  .pipe-stage.critical { border-top: 2px solid var(--amber); }
+  .pipe-stage .ps-name { font-weight: 600; font-size: 0.8rem; }
+  .pipe-stage .ps-health {
+    display: inline-block; width: 7px; height: 7px; border-radius: 50%;
+    margin-right: 0.25rem; vertical-align: middle;
+  }
+  .pipe-stage .ps-constraint {
+    display: block; font-size: 0.55rem; color: var(--text-dim); margin-top: 0.1rem;
+    letter-spacing: 0.02em;
+  }
+  .ps-green { background: var(--green); }
+  .ps-amber { background: var(--amber); }
+  .ps-red { background: var(--red); }
+  .pipe-arrow { display: flex; align-items: center; color: var(--border); font-size: 0.85rem; flex-shrink: 0; }
+
+  /* ── Summary Table ── */
+  .summary-table { width: 100%; border-collapse: collapse; margin-bottom: 1.25rem; font-size: 0.78rem; }
+  .summary-table th {
+    text-align: left; font-size: 0.6rem; text-transform: uppercase;
+    letter-spacing: 0.06em; color: var(--text-dim); padding: 0.4rem 0.6rem;
+    border-bottom: 1px solid var(--border); font-weight: 600;
+  }
+  .summary-table td { padding: 0.45rem 0.6rem; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  .summary-table tr { cursor: pointer; transition: background 0.1s; }
+  .summary-table tr:hover { background: var(--accent-dim); }
+  .summary-table tr.active-row { background: var(--accent-dim); }
+  .st-stage { font-weight: 600; white-space: nowrap; }
+  .st-health-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 0.3rem; vertical-align: middle; }
+  .st-status { font-size: 0.65rem; color: var(--text-dim); }
+  .st-weak { color: var(--text); }
+  .st-fix { color: var(--text-dim); }
+
+  /* Constraint type badges */
+  .cb {
+    font-size: 0.55rem; font-weight: 700; padding: 0.08rem 0.32rem; border-radius: 3px;
+    text-transform: uppercase; letter-spacing: 0.03em; margin-right: 0.3rem;
+    white-space: nowrap; vertical-align: middle;
+  }
+  .cb-founder { background: rgba(108,140,255,0.15); color: var(--accent); }
+  .cb-automation { background: rgba(167,139,250,0.15); color: var(--purple); }
+  .cb-visibility { background: rgba(34,211,238,0.12); color: var(--cyan); }
+  .cb-process { background: rgba(251,191,36,0.12); color: var(--amber); }
+  .cb-skill { background: rgba(244,114,182,0.12); color: var(--pink); }
+
+  /* Health status pills */
+  .health-pill {
+    font-size: 0.65rem; font-weight: 600; padding: 0.15rem 0.5rem;
+    border-radius: 999px; white-space: nowrap;
+  }
+  .hp-stable { background: var(--green-dim); color: var(--green); }
+  .hp-fragile { background: var(--amber-dim); color: var(--amber); }
+  .hp-bottlenecked { background: rgba(108,140,255,0.12); color: var(--accent); }
+  .hp-manual { background: rgba(251,191,36,0.12); color: var(--amber); }
+  .hp-weak { background: var(--red-dim); color: var(--red); }
+
+  /* Critical path badge */
+  .cp-badge {
+    font-size: 0.55rem; font-weight: 700; padding: 0.1rem 0.35rem;
+    border-radius: 3px; background: rgba(251,191,36,0.15); color: var(--amber);
+    text-transform: uppercase; letter-spacing: 0.04em; margin-left: 0.4rem;
+  }
+
+  /* Investment focus badges */
+  .inv {
+    font-size: 0.55rem; font-weight: 600; padding: 0.08rem 0.32rem;
+    border-radius: 3px; text-transform: uppercase; white-space: nowrap;
+  }
+  .inv-tracking { background: rgba(34,211,238,0.12); color: var(--cyan); }
+  .inv-progress { background: var(--green-dim); color: var(--green); }
+  .inv-upnext { background: var(--amber-dim); color: var(--amber); }
+  .inv-planned { background: var(--accent-dim); color: var(--accent); }
+  .inv-backlog { background: var(--surface2); color: rgba(139,143,163,0.6); }
+
+  /* ── Detail Panel ── */
+  .detail {
+    display: none; background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 1rem 1.15rem; margin-bottom: 1.25rem;
+    animation: fadeIn 0.2s ease;
+  }
+  .detail.visible { display: block; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
+
+  .detail-header {
+    display: flex; align-items: center; gap: 0.5rem;
+    margin-bottom: 0.75rem; flex-wrap: wrap;
+  }
+  .detail-header h2 { font-size: 1.05rem; font-weight: 700; }
+
+  /* Three-column: Ideal | Weak | Fix */
+  .flow-cols { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.75rem; margin-bottom: 0.6rem; }
+  @media (max-width: 900px) { .flow-cols { grid-template-columns: 1fr; } }
+
+  .flow-card { padding: 0.7rem; border-radius: 7px; font-size: 0.77rem; }
+  .flow-card h3 { font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.4rem; font-weight: 700; }
+  .flow-card ul { list-style: none; padding: 0; }
+  .flow-card li { padding: 0.12rem 0; line-height: 1.4; }
+  .flow-card li::before { margin-right: 0.35rem; font-size: 0.7rem; }
+
+  .fc-ideal { background: var(--green-dim); border: 1px solid rgba(74,222,128,0.15); }
+  .fc-ideal h3 { color: var(--green); }
+  .fc-ideal li::before { content: "✓"; color: var(--green); }
+
+  .fc-weak { background: var(--red-dim); border: 1px solid rgba(248,113,113,0.2); }
+  .fc-weak h3 { color: var(--red); }
+  .fc-weak li { color: var(--text); font-weight: 500; }
+
+  .fc-fix { background: var(--amber-dim); border: 1px solid rgba(251,191,36,0.15); }
+  .fc-fix h3 { color: var(--amber); }
+  .fc-fix li::before { content: "→"; color: var(--amber); }
+  .fc-fix .planned { font-style: italic; opacity: 0.7; }
+
+  /* Compact metadata row */
+  .meta-row {
+    display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center;
+    font-size: 0.68rem; color: var(--text-dim);
+  }
+  .meta-row .mr-label { font-weight: 600; font-size: 0.58rem; text-transform: uppercase; letter-spacing: 0.04em; }
+  .sf { font-size: 0.62rem; padding: 0.1rem 0.35rem; border-radius: 3px; background: var(--surface2); border: 1px solid var(--border); color: var(--text-dim); }
+
+  /* Failure strip */
+  .fm-strip { display: flex; flex-wrap: wrap; gap: 0.3rem; align-items: center; }
+  .fm-strip .mr-label { margin-right: 0.15rem; }
+  .fm { font-size: 0.65rem; padding: 0.15rem 0.4rem; border-radius: 3px; background: rgba(248,113,113,0.06); border: 1px solid rgba(248,113,113,0.12); color: var(--text-dim); }
+
+  /* Skills toggle */
+  .skills-toggle {
+    display: inline-flex; align-items: center; gap: 0.3rem;
+    font-size: 0.68rem; color: var(--text-dim); cursor: pointer;
+    padding: 0.2rem 0; border: none; background: none; font-family: inherit;
+  }
+  .skills-toggle:hover { color: var(--accent); }
+  .skills-toggle .arrow { transition: transform 0.2s; display: inline-block; font-size: 0.6rem; }
+  .skills-toggle.open .arrow { transform: rotate(90deg); }
+  .skills-body { display: none; margin-top: 0.35rem; }
+  .skills-body.open { display: block; }
+  .skill-chips { display: flex; flex-wrap: wrap; gap: 0.25rem; }
+  .skill-chip {
+    font-size: 0.64rem; padding: 0.15rem 0.4rem; border-radius: 3px;
+    background: var(--surface2); border: 1px solid var(--border);
+    display: inline-flex; align-items: center; gap: 0.25rem;
+  }
+  .skill-chip code { font-family: 'JetBrains Mono', monospace; font-size: 0.62rem; color: var(--accent); }
+  .sc-trust {
+    font-size: 0.5rem; font-weight: 600; padding: 0.05rem 0.25rem;
+    border-radius: 2px; text-transform: uppercase; letter-spacing: 0.03em;
+  }
+  .t-manual { background: rgba(248,113,113,0.15); color: #f87171; }
+  .t-assisted { background: rgba(251,191,36,0.15); color: #fbbf24; }
+  .t-review { background: rgba(108,140,255,0.15); color: #6c8cff; }
+  .t-auto { background: rgba(74,222,128,0.15); color: #4ade80; }
+  .t-critical { background: rgba(244,114,182,0.15); color: #f472b6; }
+
+  /* ── Fix Map ── */
+  .fix-map { margin-top: 1.5rem; padding: 1rem 1.15rem; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; }
+  .fix-map h2 { font-size: 1.05rem; font-weight: 700; margin-bottom: 0.6rem; }
+  .fix-table { width: 100%; border-collapse: collapse; font-size: 0.75rem; }
+  .fix-table th {
+    text-align: left; font-size: 0.58rem; text-transform: uppercase;
+    letter-spacing: 0.06em; color: var(--text-dim); padding: 0.35rem 0.6rem;
+    border-bottom: 1px solid var(--border); font-weight: 600;
+  }
+  .fix-table td { padding: 0.4rem 0.6rem; border-bottom: 1px solid var(--border); }
+  .ft-stage { color: var(--text-dim); font-size: 0.68rem; }
+  .ft-weak { color: var(--text); }
+  .ft-fix { color: var(--text); }
+  .ft-owner {
+    font-size: 0.55rem; font-weight: 600; padding: 0.08rem 0.3rem;
+    border-radius: 3px; text-transform: uppercase; white-space: nowrap;
+  }
+  .fo-carl { background: var(--accent-dim); color: var(--accent); }
+  .fo-hermes { background: var(--purple-dim); color: var(--purple); }
+  .fo-team { background: rgba(34,211,238,0.12); color: var(--cyan); }
+  .fo-agent { background: rgba(244,114,182,0.12); color: var(--pink); }
+
+  /* ── Architecture (collapsed) ── */
+  .arch-section { margin-top: 1.5rem; border-top: 1px solid var(--border); padding-top: 0.75rem; }
+  .arch-toggle {
+    display: flex; align-items: center; gap: 0.4rem; cursor: pointer;
+    border: none; background: none; color: var(--text-dim); font-family: inherit;
+    font-size: 0.8rem; font-weight: 600; padding: 0.3rem 0;
+  }
+  .arch-toggle:hover { color: var(--text); }
+  .arch-toggle .arrow { transition: transform 0.2s; display: inline-block; }
+  .arch-toggle.open .arrow { transform: rotate(90deg); }
+  .arch-body { display: none; margin-top: 0.5rem; }
+  .arch-body.open { display: block; }
+  .arch-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+  @media (max-width: 800px) { .arch-grid { grid-template-columns: 1fr; } }
+  .arch-panel { padding: 0.85rem; background: var(--surface2); border: 1px solid var(--border); border-radius: 7px; }
+  .arch-panel h3 { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-dim); margin-bottom: 0.5rem; font-weight: 700; }
+  .sor-table { width: 100%; border-collapse: collapse; font-size: 0.72rem; }
+  .sor-table th { text-align: left; font-size: 0.55rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-dim); padding: 0.25rem 0.35rem; border-bottom: 1px solid var(--border); }
+  .sor-table td { padding: 0.3rem 0.35rem; border-bottom: 1px solid var(--border); }
+  .sor-table tr:last-child td { border-bottom: none; }
+  .trust-legend { display: flex; flex-direction: column; gap: 0.35rem; font-size: 0.68rem; }
+  .trust-legend-item { display: flex; align-items: center; gap: 0.3rem; color: var(--text-dim); }
+  .constraint-compact { display: flex; flex-direction: column; gap: 0.3rem; }
+  .cc-item { display: flex; align-items: baseline; gap: 0.35rem; font-size: 0.7rem; }
+  .cc-num { font-size: 0.55rem; font-weight: 700; color: var(--red); background: var(--red-dim); padding: 0.05rem 0.25rem; border-radius: 3px; flex-shrink: 0; }
+
+  .footer { margin-top: 1.5rem; padding-top: 0.75rem; border-top: 1px solid var(--border); text-align: center; color: var(--text-dim); font-size: 0.65rem; }
+</style>
+</head>
+<body>
+
+<h1>Carl's Brain Map</h1>
+<p class="tagline">Kariba Labs operating system. Flow → Bottleneck → Fix.</p>
+
+<!-- ════════ PIPELINE ════════ -->
+<div class="pipeline" id="pipeline">
+  <div class="pipe-stage active critical" data-stage="capture">
+    <span class="ps-health ps-amber"></span><span class="ps-name">Capture</span>
+    <span class="ps-constraint">automation gap</span>
+  </div>
+  <div class="pipe-arrow">→</div>
+  <div class="pipe-stage" data-stage="triage">
+    <span class="ps-health ps-amber"></span><span class="ps-name">Triage</span>
+    <span class="ps-constraint">automation gap</span>
+  </div>
+  <div class="pipe-arrow">→</div>
+  <div class="pipe-stage" data-stage="tactical">
+    <span class="ps-health ps-amber"></span><span class="ps-name">Tactical</span>
+    <span class="ps-constraint">skill gap</span>
+  </div>
+  <div class="pipe-arrow">→</div>
+  <div class="pipe-stage critical" data-stage="strategic">
+    <span class="ps-health ps-red"></span><span class="ps-name">Strategic</span>
+    <span class="ps-constraint">process gap</span>
+  </div>
+  <div class="pipe-arrow">→</div>
+  <div class="pipe-stage critical" data-stage="scope">
+    <span class="ps-health ps-green"></span><span class="ps-name">Scope</span>
+    <span class="ps-constraint">founder bottleneck</span>
+  </div>
+  <div class="pipe-arrow">→</div>
+  <div class="pipe-stage" data-stage="execute">
+    <span class="ps-health ps-green"></span><span class="ps-name">Execute</span>
+    <span class="ps-constraint">automation gap</span>
+  </div>
+  <div class="pipe-arrow">→</div>
+  <div class="pipe-stage" data-stage="review">
+    <span class="ps-health ps-amber"></span><span class="ps-name">Review</span>
+    <span class="ps-constraint">process gap</span>
+  </div>
+  <div class="pipe-arrow">→</div>
+  <div class="pipe-stage" data-stage="reflect">
+    <span class="ps-health ps-red"></span><span class="ps-name">Reflect</span>
+    <span class="ps-constraint">no telemetry</span>
+  </div>
+</div>
+
+<!-- ════════ SUMMARY TABLE ════════ -->
+<table class="summary-table" id="summaryTable">
+  <thead><tr><th></th><th>Stage</th><th>Weakest Link</th><th>Current Fix</th><th></th></tr></thead>
+  <tbody>
+    <tr data-stage="capture">
+      <td><span class="st-health-dot" style="background:var(--amber)"></span></td>
+      <td class="st-stage">Capture <span class="cp-badge">Critical</span></td>
+      <td class="st-weak"><span class="cb cb-automation">Automation</span> Passive ingestion; client comms fragment across channels</td>
+      <td class="st-fix">Hermes link capture + scheduled sync-head</td>
+      <td><span class="inv inv-upnext">Up Next</span></td>
+    </tr>
+    <tr data-stage="triage">
+      <td><span class="st-health-dot" style="background:var(--amber)"></span></td>
+      <td class="st-stage">Triage</td>
+      <td class="st-weak"><span class="cb cb-automation">Automation</span> Action items stay in notes; never reach Linear</td>
+      <td class="st-fix">Hermes 4h triage loop</td>
+      <td><span class="inv inv-tracking">Tracking</span></td>
+    </tr>
+    <tr data-stage="tactical">
+      <td><span class="st-health-dot" style="background:var(--amber)"></span></td>
+      <td class="st-stage">Tactical</td>
+      <td class="st-weak"><span class="cb cb-skill">Skill Gap</span> Calendar-blind planning; no team visibility</td>
+      <td class="st-fix">Meeting-aware /today + shared pulse</td>
+      <td><span class="inv inv-upnext">Up Next</span></td>
+    </tr>
+    <tr data-stage="strategic">
+      <td><span class="st-health-dot" style="background:var(--red)"></span></td>
+      <td class="st-stage">Strategic <span class="cp-badge">Critical</span></td>
+      <td class="st-weak"><span class="cb cb-process">Process</span> No structured cadence; strategy context decays between reviews</td>
+      <td class="st-fix">Wispr Flow note + monthly strategy review</td>
+      <td><span class="inv inv-tracking">Tracking</span></td>
+    </tr>
+    <tr data-stage="scope">
+      <td><span class="st-health-dot" style="background:var(--green)"></span></td>
+      <td class="st-stage">Scope <span class="cp-badge">Critical</span></td>
+      <td class="st-weak"><span class="cb cb-founder">Founder</span> Carl is the only scoper; all work queues behind one person</td>
+      <td class="st-fix">Delegation runbook for familiar patterns</td>
+      <td><span class="inv inv-planned">Planned</span></td>
+    </tr>
+    <tr data-stage="execute">
+      <td><span class="st-health-dot" style="background:var(--green)"></span></td>
+      <td class="st-stage">Execute</td>
+      <td class="st-weak"><span class="cb cb-automation">Automation</span> No data quality monitoring; notebooks go stale silently</td>
+      <td class="st-fix">Scheduled udm-audit + verify hooks</td>
+      <td><span class="inv inv-upnext">Up Next</span></td>
+    </tr>
+    <tr data-stage="review">
+      <td><span class="st-health-dot" style="background:var(--amber)"></span></td>
+      <td class="st-stage">Review</td>
+      <td class="st-weak"><span class="cb cb-process">Process</span> Ad hoc QA; quality depends on available attention</td>
+      <td class="st-fix">QA checklist skill</td>
+      <td><span class="inv inv-upnext">Up Next</span></td>
+    </tr>
+    <tr data-stage="reflect">
+      <td><span class="st-health-dot" style="background:var(--red)"></span></td>
+      <td class="st-stage">Reflect</td>
+      <td class="st-weak"><span class="cb cb-automation">Automation</span> No telemetry; skills decay silently</td>
+      <td class="st-fix">Scheduled retros + context review</td>
+      <td><span class="inv inv-planned">Planned</span></td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- ════════ DETAIL PANELS ════════ -->
+
+<div class="detail visible" id="detail-capture">
+  <div class="detail-header">
+    <h2>Capture</h2>
+    <span class="health-pill hp-fragile">Fragile</span>
+    <span class="cp-badge">Critical Path</span>
+  </div>
+  <div class="flow-cols">
+    <div class="flow-card fc-ideal"><h3>When Healthy</h3><ul>
+      <li>Nothing important gets lost — meetings, emails, links all land in one place</li>
+      <li>Client commitments tracked without relying on memory</li>
+      <li>Morning briefing ready before the first meeting</li>
+    </ul></div>
+    <div class="flow-card fc-weak"><h3>Weakest Links</h3><ul>
+      <li><span class="cb cb-automation">Automation</span> Capture is manual-trigger only</li>
+      <li><span class="cb cb-visibility">Visibility</span> Client relationship state has no home</li>
+      <li><span class="cb cb-visibility">Visibility</span> Slack/email/Telegram action items leak</li>
+    </ul></div>
+    <div class="flow-card fc-fix"><h3>Fixes</h3><ul>
+      <li>Hermes Telegram link capture <span class="inv inv-upnext">Up Next</span></li>
+      <li>Scheduled daily /sync-head <span class="inv inv-upnext">Up Next</span></li>
+      <li class="planned">Engagement state files <span class="inv inv-backlog">Backlog</span></li>
+    </ul></div>
+  </div>
+  <div class="meta-row">
+    <div class="fm-strip">
+      <span class="mr-label">If broken:</span>
+      <span class="fm">Dropped commitments</span><span class="fm">Comms fragmentation</span>
+    </div>
+    <span>|</span>
+    <span class="mr-label">Surfaces:</span>
+    <span class="sf">Granola</span><span class="sf">Gmail</span><span class="sf">Drive</span><span class="sf">Calendar</span><span class="sf">Web</span><span class="sf">Telegram</span><span class="sf">→ Obsidian Triage/</span>
+  </div>
+  <button class="skills-toggle" onclick="toggleSkills(this)"><span class="arrow">▸</span> Skills (6) · 3 Auto · 3 Assisted</button>
+  <div class="skills-body"><div class="skill-chips">
+    <span class="skill-chip"><code>capture-meeting</code><span class="sc-trust t-assisted">Assisted</span></span>
+    <span class="skill-chip"><code>capture-drive</code><span class="sc-trust t-assisted">Assisted</span></span>
+    <span class="skill-chip"><code>capture-read</code><span class="sc-trust t-auto">Auto</span></span>
+    <span class="skill-chip"><code>sync-head</code><span class="sc-trust t-auto">Auto</span></span>
+    <span class="skill-chip"><code>Gmail MCP</code><span class="sc-trust t-assisted">Assisted</span></span>
+    <span class="skill-chip"><code>Calendar MCP</code><span class="sc-trust t-auto">Auto</span></span>
+  </div></div>
+</div>
+
+<div class="detail" id="detail-triage">
+  <div class="detail-header">
+    <h2>Triage</h2>
+    <span class="health-pill hp-manual">Manual-heavy</span>
+  </div>
+  <div class="flow-cols">
+    <div class="flow-card fc-ideal"><h3>When Healthy</h3><ul>
+      <li>Inbox cleared within hours, not days</li>
+      <li>Action items auto-route to Linear without manual transfer</li>
+      <li>Engagement indexes always reflect recent activity</li>
+    </ul></div>
+    <div class="flow-card fc-weak"><h3>Weakest Links</h3><ul>
+      <li><span class="cb cb-automation">Automation</span> No triage-to-Linear bridge</li>
+      <li><span class="cb cb-process">Process</span> Inbox grows when loop isn't running</li>
+    </ul></div>
+    <div class="flow-card fc-fix"><h3>Fixes</h3><ul>
+      <li>Hermes /triage-notes 4h loop <span class="inv inv-tracking">Tracking</span></li>
+      <li>Scheduled /weekly-index Sundays <span class="inv inv-tracking">Tracking</span></li>
+      <li class="planned">Auto-create Linear from tagged notes <span class="inv inv-backlog">Backlog</span></li>
+    </ul></div>
+  </div>
+  <div class="meta-row">
+    <div class="fm-strip">
+      <span class="mr-label">If broken:</span>
+      <span class="fm">Work never starts</span><span class="fm">Capture effort wasted</span>
+    </div>
+    <span>|</span>
+    <span class="mr-label">Surfaces:</span>
+    <span class="sf">Obsidian Triage/</span><span class="sf">→ Engagement folders</span><span class="sf">→ Linear</span>
+  </div>
+  <button class="skills-toggle" onclick="toggleSkills(this)"><span class="arrow">▸</span> Skills (4) · 2 Review · 1 Auto · 1 Assisted</button>
+  <div class="skills-body"><div class="skill-chips">
+    <span class="skill-chip"><code>triage-notes</code><span class="sc-trust t-review">Review</span></span>
+    <span class="skill-chip"><code>organize-notes</code><span class="sc-trust t-review">Review</span></span>
+    <span class="skill-chip"><code>weekly-index</code><span class="sc-trust t-auto">Auto</span></span>
+    <span class="skill-chip"><code>Linear MCP</code><span class="sc-trust t-assisted">Assisted</span></span>
+  </div></div>
+</div>
+
+<div class="detail" id="detail-tactical">
+  <div class="detail-header">
+    <h2>Tactical</h2>
+    <span class="health-pill hp-fragile">Fragile</span>
+  </div>
+  <div class="flow-cols">
+    <div class="flow-card fc-ideal"><h3>When Healthy</h3><ul>
+      <li>Daily plan shaped by calendar reality — packed days get lighter lists</li>
+      <li>The team shares the same operational picture</li>
+      <li>Board hygiene on cadence, not crisis</li>
+    </ul></div>
+    <div class="flow-card fc-weak"><h3>Weakest Links</h3><ul>
+      <li><span class="cb cb-skill">Skill Gap</span> /today doesn't factor meeting load</li>
+      <li><span class="cb cb-visibility">Visibility</span> Each person's context is siloed</li>
+    </ul></div>
+    <div class="flow-card fc-fix"><h3>Fixes</h3><ul>
+      <li>Meeting-aware /today skill <span class="inv inv-upnext">Up Next</span></li>
+      <li>Shared Monday /client-ops-pulse <span class="inv inv-upnext">Up Next</span></li>
+    </ul></div>
+  </div>
+  <div class="meta-row">
+    <div class="fm-strip">
+      <span class="mr-label">If broken:</span>
+      <span class="fm">Reactive overload</span><span class="fm">Planning uses bad data</span>
+    </div>
+    <span>|</span>
+    <span class="mr-label">Surfaces:</span>
+    <span class="sf">Obsidian daily</span><span class="sf">Linear boards</span><span class="sf">Calendar</span>
+  </div>
+  <button class="skills-toggle" onclick="toggleSkills(this)"><span class="arrow">▸</span> Skills (5) · 3 Auto · 1 Assisted · 1 Critical</button>
+  <div class="skills-body"><div class="skill-chips">
+    <span class="skill-chip"><code>today</code><span class="sc-trust t-assisted">Assisted</span></span>
+    <span class="skill-chip"><code>today-update</code><span class="sc-trust t-auto">Auto</span></span>
+    <span class="skill-chip"><code>client-ops-pulse</code><span class="sc-trust t-auto">Auto</span></span>
+    <span class="skill-chip"><code>client-ops-triage</code><span class="sc-trust t-critical">Critical</span></span>
+    <span class="skill-chip"><code>Calendar MCP</code><span class="sc-trust t-auto">Auto</span></span>
+  </div></div>
+</div>
+
+<div class="detail" id="detail-strategic">
+  <div class="detail-header">
+    <h2>Strategic</h2>
+    <span class="health-pill hp-weak">Weak</span>
+    <span class="cp-badge">Critical Path</span>
+  </div>
+  <div class="flow-cols">
+    <div class="flow-card fc-ideal"><h3>When Healthy</h3><ul>
+      <li>Strategy capture survives busy weeks because it starts with a fast voice note</li>
+      <li>Guided questions surface what feels stale, missing, or unclear</li>
+      <li>Active strategy workstreams stay visible and can move forward between reviews</li>
+    </ul></div>
+    <div class="flow-card fc-weak"><h3>Weakest Links</h3><ul>
+      <li><span class="cb cb-process">Process</span> No durable cadence or review artifact</li>
+      <li><span class="cb cb-visibility">Visibility</span> Stale assumptions and missing context stay hidden</li>
+      <li><span class="cb cb-founder">Founder</span> Decisions live too much in Carl's head</li>
+    </ul></div>
+    <div class="flow-card fc-fix"><h3>Fixes</h3><ul>
+      <li>Wispr Flow strategy note + guided questions <span class="inv inv-tracking">Tracking</span></li>
+      <li>Monthly strategy review loop <span class="inv inv-upnext">Up Next</span></li>
+      <li>Aggregate pulse data monthly <span class="inv inv-upnext">Up Next</span></li>
+      <li class="planned">Strategy project state notes <span class="inv inv-backlog">Backlog</span></li>
+    </ul></div>
+  </div>
+  <div class="meta-row">
+    <div class="fm-strip">
+      <span class="mr-label">If broken:</span>
+      <span class="fm">Loudest client wins</span><span class="fm">Low-value work consumes founder time</span>
+    </div>
+    <span>|</span>
+    <span class="mr-label">Surfaces:</span>
+    <span class="sf">Obsidian strategy notes</span><span class="sf">Linear projects</span>
+  </div>
+  <button class="skills-toggle" onclick="toggleSkills(this)"><span class="arrow">▸</span> Skills (0) — all Manual, no tooling yet</button>
+  <div class="skills-body"><div class="skill-chips" style="color:var(--text-dim);font-size:0.68rem;">No skills. Strategic decisions are entirely founder-judgment today.</div></div>
+</div>
+
+<div class="detail" id="detail-scope">
+  <div class="detail-header">
+    <h2>Scope</h2>
+    <span class="health-pill hp-bottlenecked">Bottlenecked</span>
+    <span class="cp-badge">Critical Path</span>
+  </div>
+  <div class="flow-cols">
+    <div class="flow-card fc-ideal"><h3>When Healthy</h3><ul>
+      <li>Team handles familiar patterns; Carl focuses on novel problems</li>
+      <li>Every project starts with a durable brief, not a conversation</li>
+      <li>PRDs capture enough for autonomous execution via Ralph</li>
+    </ul></div>
+    <div class="flow-card fc-weak"><h3>Weakest Links</h3><ul>
+      <li><span class="cb cb-founder">Founder</span> Carl is the only scoper</li>
+      <li><span class="cb cb-process">Process</span> Scoping stays in conversation, not captured</li>
+    </ul></div>
+    <div class="flow-card fc-fix"><h3>Fixes</h3><ul>
+      <li>PRD → Ralph pipeline (existing)</li>
+      <li>Delegation runbook for familiar patterns <span class="inv inv-planned">Planned</span></li>
+    </ul></div>
+  </div>
+  <div class="meta-row">
+    <div class="fm-strip">
+      <span class="mr-label">If broken:</span>
+      <span class="fm">Execution stalls mid-project</span><span class="fm">Duplicate discovery work</span>
+    </div>
+    <span>|</span>
+    <span class="mr-label">Surfaces:</span>
+    <span class="sf">Obsidian research</span><span class="sf">Linear issues</span><span class="sf">Claude Code</span>
+  </div>
+  <button class="skills-toggle" onclick="toggleSkills(this)"><span class="arrow">▸</span> Skills (6) · 4 Manual · 1 Assisted · 1 Auto</button>
+  <div class="skills-body"><div class="skill-chips">
+    <span class="skill-chip"><code>intake</code><span class="sc-trust t-manual">Manual</span></span>
+    <span class="skill-chip"><code>prd</code><span class="sc-trust t-manual">Manual</span></span>
+    <span class="skill-chip"><code>udm-discover</code><span class="sc-trust t-manual">Manual</span></span>
+    <span class="skill-chip"><code>brainstorming</code><span class="sc-trust t-manual">Manual</span></span>
+    <span class="skill-chip"><code>writing-plans</code><span class="sc-trust t-assisted">Assisted</span></span>
+    <span class="skill-chip"><code>ralph</code><span class="sc-trust t-auto">Auto</span></span>
+  </div></div>
+</div>
+
+<div class="detail" id="detail-execute">
+  <div class="detail-header">
+    <h2>Execute</h2>
+    <span class="health-pill hp-stable">Stable</span>
+  </div>
+  <div class="flow-cols">
+    <div class="flow-card fc-ideal"><h3>When Healthy</h3><ul>
+      <li>Deliverables land on OSO platform, not in local files</li>
+      <li>Data quality monitored — stale notebooks caught before clients see them</li>
+      <li>oss-directory enrichment runs autonomously overnight</li>
+    </ul></div>
+    <div class="flow-card fc-weak"><h3>Weakest Links</h3><ul>
+      <li><span class="cb cb-automation">Automation</span> No data quality monitoring</li>
+      <li><span class="cb cb-automation">Automation</span> Notebook verification often skipped</li>
+      <li><span class="cb cb-automation">Automation</span> No CI/CD visibility</li>
+    </ul></div>
+    <div class="flow-card fc-fix"><h3>Fixes</h3><ul>
+      <li>Hermes weekly /udm-audit <span class="inv inv-upnext">Up Next</span></li>
+      <li>notebook-verify post-hook <span class="inv inv-upnext">Up Next</span></li>
+      <li>Hermes ossd-enrich overnight <span class="inv inv-planned">Planned</span></li>
+    </ul></div>
+  </div>
+  <div class="meta-row">
+    <div class="fm-strip">
+      <span class="mr-label">If broken:</span>
+      <span class="fm">Client sees broken analysis</span><span class="fm">UDM drift unnoticed</span><span class="fm">Agent overreach</span>
+    </div>
+    <span>|</span>
+    <span class="mr-label">Surfaces:</span>
+    <span class="sf">OSO platform</span><span class="sf">GitHub</span><span class="sf">oss-directory</span><span class="sf">insights-private</span><span class="sf">Linear</span>
+  </div>
+  <button class="skills-toggle" onclick="toggleSkills(this)"><span class="arrow">▸</span> Skills (16) · 5 Review · 7 Assisted · 2 Auto · 2 Critical</button>
+  <div class="skills-body">
+    <div style="font-size:0.6rem;color:var(--text-dim);margin-bottom:0.2rem;font-weight:600;">CLIENT</div>
+    <div class="skill-chips" style="margin-bottom:0.35rem;">
+      <span class="skill-chip"><code>orchestrator</code><span class="sc-trust t-review">Review</span></span>
+      <span class="skill-chip"><code>ingest-*</code><span class="sc-trust t-critical">Critical</span></span>
+      <span class="skill-chip"><code>udm-create</code><span class="sc-trust t-critical">Critical</span></span>
+      <span class="skill-chip"><code>notebook-create</code><span class="sc-trust t-assisted">Assisted</span></span>
+      <span class="skill-chip"><code>write-up</code><span class="sc-trust t-assisted">Assisted</span></span>
+      <span class="skill-chip"><code>oso-slides-*</code><span class="sc-trust t-assisted">Assisted</span></span>
+      <span class="skill-chip"><code>ossd-*</code><span class="sc-trust t-review">Review</span></span>
+      <span class="skill-chip"><code>pyoso-analyst</code><span class="sc-trust t-assisted">Assisted</span></span>
+      <span class="skill-chip"><code>client-ops-debrief</code><span class="sc-trust t-review">Review</span></span>
+    </div>
+    <div style="font-size:0.6rem;color:var(--text-dim);margin-bottom:0.2rem;font-weight:600;">INTERNAL</div>
+    <div class="skill-chips">
+      <span class="skill-chip"><code>build</code><span class="sc-trust t-review">Review</span></span>
+      <span class="skill-chip"><code>debug-workflow</code><span class="sc-trust t-assisted">Assisted</span></span>
+      <span class="skill-chip"><code>tdd</code><span class="sc-trust t-assisted">Assisted</span></span>
+      <span class="skill-chip"><code>refactor</code><span class="sc-trust t-review">Review</span></span>
+      <span class="skill-chip"><code>craft-pr</code><span class="sc-trust t-auto">Auto</span></span>
+      <span class="skill-chip"><code>qa</code><span class="sc-trust t-auto">Auto</span></span>
+      <span class="skill-chip"><code>apollo-client</code><span class="sc-trust t-assisted">Assisted</span></span>
+    </div>
+  </div>
+</div>
+
+<div class="detail" id="detail-review">
+  <div class="detail-header">
+    <h2>Review</h2>
+    <span class="health-pill hp-manual">Manual-heavy</span>
+  </div>
+  <div class="flow-cols">
+    <div class="flow-card fc-ideal"><h3>When Healthy</h3><ul>
+      <li>Deliverables don't depend on Carl's available attention</li>
+      <li>Every notebook and write-up passes a structured checklist</li>
+      <li>Client notified on completion with a clear summary</li>
+    </ul></div>
+    <div class="flow-card fc-weak"><h3>Weakest Links</h3><ul>
+      <li><span class="cb cb-process">Process</span> QA is ad hoc — bad days = bad output</li>
+      <li><span class="cb cb-automation">Automation</span> No client notification on completion</li>
+    </ul></div>
+    <div class="flow-card fc-fix"><h3>Fixes</h3><ul>
+      <li>QA checklist skill <span class="inv inv-upnext">Up Next</span></li>
+      <li>Team owns ossd PR review (existing)</li>
+      <li class="planned">Completion summary to client <span class="inv inv-backlog">Backlog</span></li>
+    </ul></div>
+  </div>
+  <div class="meta-row">
+    <div class="fm-strip">
+      <span class="mr-label">If broken:</span>
+      <span class="fm">Broken output ships</span><span class="fm">Client doesn't know work is done</span>
+    </div>
+    <span>|</span>
+    <span class="mr-label">Surfaces:</span>
+    <span class="sf">GitHub PRs</span><span class="sf">OSO platform</span><span class="sf">Linear</span><span class="sf">Client docs</span>
+  </div>
+  <button class="skills-toggle" onclick="toggleSkills(this)"><span class="arrow">▸</span> Skills (6) · 2 Auto · 1 Assisted · 1 Manual · 1 Review · 1 Critical</button>
+  <div class="skills-body"><div class="skill-chips">
+    <span class="skill-chip"><code>verification-before-completion</code><span class="sc-trust t-auto">Auto</span></span>
+    <span class="skill-chip"><code>requesting-code-review</code><span class="sc-trust t-assisted">Assisted</span></span>
+    <span class="skill-chip"><code>receiving-code-review</code><span class="sc-trust t-manual">Manual</span></span>
+    <span class="skill-chip"><code>notebook-verify</code><span class="sc-trust t-auto">Auto</span></span>
+    <span class="skill-chip"><code>ossd-review-pr</code><span class="sc-trust t-review">Review</span></span>
+    <span class="skill-chip"><code>linear-update-issue</code><span class="sc-trust t-critical">Critical</span></span>
+  </div></div>
+</div>
+
+<div class="detail" id="detail-reflect">
+  <div class="detail-header">
+    <h2>Reflect</h2>
+    <span class="health-pill hp-weak">Weak</span>
+  </div>
+  <div class="flow-cols">
+    <div class="flow-card fc-ideal"><h3>When Healthy</h3><ul>
+      <li>The system gets smarter every month</li>
+      <li>Stale skills detected before they cause bad output</li>
+      <li>Lessons from client work compound into better workflows</li>
+    </ul></div>
+    <div class="flow-card fc-weak"><h3>Weakest Links</h3><ul>
+      <li><span class="cb cb-automation">Automation</span> No telemetry on workflow health</li>
+      <li><span class="cb cb-process">Process</span> Skills decay silently</li>
+      <li><span class="cb cb-process">Process</span> Lessons don't feed back into workflows</li>
+    </ul></div>
+    <div class="flow-card fc-fix"><h3>Fixes</h3><ul>
+      <li>Scheduled /weeknotes Friday PM <span class="inv inv-planned">Planned</span></li>
+      <li>Biweekly /claude-context-review <span class="inv inv-planned">Planned</span></li>
+      <li>Retro-to-memory skill <span class="inv inv-planned">Planned</span></li>
+    </ul></div>
+  </div>
+  <div class="meta-row">
+    <div class="fm-strip">
+      <span class="mr-label">If broken:</span>
+      <span class="fm">Same mistakes repeat</span><span class="fm">Silent skill decay</span><span class="fm">Blind investment decisions</span>
+    </div>
+    <span>|</span>
+    <span class="mr-label">Surfaces:</span>
+    <span class="sf">Obsidian</span><span class="sf">Claude memory</span><span class="sf">Skills repo</span>
+  </div>
+  <button class="skills-toggle" onclick="toggleSkills(this)"><span class="arrow">▸</span> Skills (5) · 3 Auto · 2 Assisted</button>
+  <div class="skills-body"><div class="skill-chips">
+    <span class="skill-chip"><code>weeknotes</code><span class="sc-trust t-assisted">Assisted</span></span>
+    <span class="skill-chip"><code>observer</code><span class="sc-trust t-auto">Auto</span></span>
+    <span class="skill-chip"><code>claude-context-review</code><span class="sc-trust t-assisted">Assisted</span></span>
+    <span class="skill-chip"><code>housekeep</code><span class="sc-trust t-auto">Auto</span></span>
+    <span class="skill-chip"><code>udm-audit</code><span class="sc-trust t-auto">Auto</span></span>
+  </div></div>
+</div>
+
+<!-- ════════ FIX MAP ════════ -->
+<div class="fix-map">
+  <h2>Weak Link → Fix</h2>
+  <table class="fix-table">
+    <thead><tr><th>Stage</th><th>Constraint</th><th>Weak Link</th><th>Fix</th><th>Owner</th><th>Focus</th></tr></thead>
+    <tbody>
+      <tr><td class="ft-stage">Capture</td><td><span class="cb cb-automation">Auto</span></td><td class="ft-weak">Passive ingestion</td><td class="ft-fix">Hermes Telegram link capture</td><td><span class="ft-owner fo-hermes">Hermes</span></td><td><span class="inv inv-upnext">Up Next</span></td></tr>
+      <tr><td class="ft-stage">Capture</td><td><span class="cb cb-visibility">Vis</span></td><td class="ft-weak">Client comms untracked</td><td class="ft-fix">Engagement state files</td><td><span class="ft-owner fo-carl">Carl</span></td><td><span class="inv inv-backlog">Backlog</span></td></tr>
+      <tr><td class="ft-stage">Capture</td><td><span class="cb cb-automation">Auto</span></td><td class="ft-weak">Morning briefing manual</td><td class="ft-fix">Scheduled daily /sync-head</td><td><span class="ft-owner fo-carl">Carl</span></td><td><span class="inv inv-upnext">Up Next</span></td></tr>
+      <tr><td class="ft-stage">Triage</td><td><span class="cb cb-automation">Auto</span></td><td class="ft-weak">No Linear bridge</td><td class="ft-fix">Auto-create issues from tags</td><td><span class="ft-owner fo-hermes">Hermes</span></td><td><span class="inv inv-backlog">Backlog</span></td></tr>
+      <tr><td class="ft-stage">Triage</td><td><span class="cb cb-process">Proc</span></td><td class="ft-weak">Inbox backlog</td><td class="ft-fix">Hermes /triage-notes 4h loop</td><td><span class="ft-owner fo-hermes">Hermes</span></td><td><span class="inv inv-tracking">Tracking</span></td></tr>
+      <tr><td class="ft-stage">Tactical</td><td><span class="cb cb-skill">Skill</span></td><td class="ft-weak">Calendar-blind planning</td><td class="ft-fix">Meeting-aware /today</td><td><span class="ft-owner fo-carl">Carl</span></td><td><span class="inv inv-upnext">Up Next</span></td></tr>
+      <tr><td class="ft-stage">Tactical</td><td><span class="cb cb-visibility">Vis</span></td><td class="ft-weak">No team visibility</td><td class="ft-fix">Shared Monday pulse</td><td><span class="ft-owner fo-carl">Carl</span></td><td><span class="inv inv-upnext">Up Next</span></td></tr>
+      <tr><td class="ft-stage">Strategic</td><td><span class="cb cb-process">Proc</span></td><td class="ft-weak">No structured cadence; strategy context decays between reviews</td><td class="ft-fix">Wispr Flow note + monthly strategy review</td><td><span class="ft-owner fo-carl">Carl</span></td><td><span class="inv inv-tracking">Tracking</span></td></tr>
+      <tr><td class="ft-stage">Scope</td><td><span class="cb cb-founder">Founder</span></td><td class="ft-weak">Carl-only bottleneck</td><td class="ft-fix">Delegation runbook</td><td><span class="ft-owner fo-team">Team</span></td><td><span class="inv inv-planned">Planned</span></td></tr>
+      <tr><td class="ft-stage">Execute</td><td><span class="cb cb-automation">Auto</span></td><td class="ft-weak">No quality monitoring</td><td class="ft-fix">Hermes weekly /udm-audit</td><td><span class="ft-owner fo-hermes">Hermes</span></td><td><span class="inv inv-upnext">Up Next</span></td></tr>
+      <tr><td class="ft-stage">Execute</td><td><span class="cb cb-automation">Auto</span></td><td class="ft-weak">Verification skipped</td><td class="ft-fix">notebook-verify post-hook</td><td><span class="ft-owner fo-agent">Agent</span></td><td><span class="inv inv-upnext">Up Next</span></td></tr>
+      <tr><td class="ft-stage">Review</td><td><span class="cb cb-process">Proc</span></td><td class="ft-weak">Ad hoc QA</td><td class="ft-fix">QA checklist skill</td><td><span class="ft-owner fo-carl">Carl</span></td><td><span class="inv inv-upnext">Up Next</span></td></tr>
+      <tr><td class="ft-stage">Review</td><td><span class="cb cb-automation">Auto</span></td><td class="ft-weak">No client notification</td><td class="ft-fix">Completion summary</td><td><span class="ft-owner fo-carl">Carl</span></td><td><span class="inv inv-backlog">Backlog</span></td></tr>
+      <tr><td class="ft-stage">Reflect</td><td><span class="cb cb-process">Proc</span></td><td class="ft-weak">No learning loops</td><td class="ft-fix">Retro-to-memory skill</td><td><span class="ft-owner fo-carl">Carl</span></td><td><span class="inv inv-planned">Planned</span></td></tr>
+      <tr><td class="ft-stage">Reflect</td><td><span class="cb cb-process">Proc</span></td><td class="ft-weak">Silent skill decay</td><td class="ft-fix">Biweekly context review</td><td><span class="ft-owner fo-carl">Carl</span></td><td><span class="inv inv-planned">Planned</span></td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ════════ OPERATING MANUAL ════════ -->
+<div class="arch-section">
+  <button class="arch-toggle" id="manualToggle" onclick="togglePanel('manualToggle','manualBody')"><span class="arrow">▸</span> Operating Manual — How to review, update, and execute</button>
+  <div class="arch-body" id="manualBody">
+    <div class="arch-grid">
+      <div class="arch-panel">
+        <h3>Monthly Review Checklist</h3>
+        <div class="constraint-compact" style="gap:0.45rem;">
+          <div class="cc-item" style="align-items:center;"><input type="checkbox" style="margin-right:0.3rem;accent-color:var(--green);"> Scan summary table — has any health status changed?</div>
+          <div class="cc-item" style="align-items:center;"><input type="checkbox" style="margin-right:0.3rem;accent-color:var(--green);"> Click each red/amber stage — are weak links still accurate?</div>
+          <div class="cc-item" style="align-items:center;"><input type="checkbox" style="margin-right:0.3rem;accent-color:var(--green);"> Review fix map — move items through pipeline (Backlog → Planned → Up Next → Tracking)</div>
+          <div class="cc-item" style="align-items:center;"><input type="checkbox" style="margin-right:0.3rem;accent-color:var(--green);"> Remove completed fixes; add new weak links discovered this month</div>
+          <div class="cc-item" style="align-items:center;"><input type="checkbox" style="margin-right:0.3rem;accent-color:var(--green);"> Update operating constraints (C1–C5) — any resolved? Any new?</div>
+          <div class="cc-item" style="align-items:center;"><input type="checkbox" style="margin-right:0.3rem;accent-color:var(--green);"> Feed findings into monthly strategy note</div>
+        </div>
+        <h3 style="margin-top:0.85rem;">How to Update This File</h3>
+        <div style="font-size:0.72rem; color:var(--text-dim); line-height:1.55;">
+          <p>Open in a Claude Code session and describe what changed. Examples:</p>
+          <ul style="list-style:none; padding:0; margin-top:0.3rem;">
+            <li style="padding:0.15rem 0;">• "Move Hermes triage loop from Up Next to Tracking"</li>
+            <li style="padding:0.15rem 0;">• "Capture health improved — change from Fragile to Functional"</li>
+            <li style="padding:0.15rem 0;">• "Add new weak link: notebook deploy pipeline broken"</li>
+            <li style="padding:0.15rem 0;">• "Remove the QA checklist fix — it's done"</li>
+          </ul>
+          <p style="margin-top:0.4rem;">Or edit the HTML directly — each section is clearly labeled with comments.</p>
+        </div>
+      </div>
+      <div class="arch-panel">
+        <h3>Fix Pipeline (Linear-aligned)</h3>
+        <div class="trust-legend" style="gap:0.45rem;">
+          <div class="trust-legend-item"><span class="inv inv-backlog" style="font-size:0.6rem;">Backlog</span> Identified but not prioritized — park here until strategic review</div>
+          <div class="trust-legend-item"><span class="inv inv-planned" style="font-size:0.6rem;">Planned</span> Committed to a future cycle — has an owner, no start date</div>
+          <div class="trust-legend-item"><span class="inv inv-upnext" style="font-size:0.6rem;">Up Next</span> Actively being worked this cycle — in the current sprint</div>
+          <div class="trust-legend-item"><span class="inv inv-tracking" style="font-size:0.6rem;">Tracking</span> Live and running — monitor for reliability, no action needed</div>
+        </div>
+        <h3 style="margin-top:0.85rem;">Execution Quick Reference</h3>
+        <div style="font-size:0.72rem; color:var(--text-dim); line-height:1.55;">
+          <p><strong>To activate a Hermes task:</strong> Message Hermes on Telegram with the skill command (eg, "/triage-notes"). For scheduled loops, configure on the Hetzner VPS cron.</p>
+          <p style="margin-top:0.3rem;"><strong>To build a new skill:</strong> Use <code>/writing-skills</code> in Claude Code. Skills live in <code>~/.claude/skills/</code> or project <code>.claude/skills/</code>.</p>
+          <p style="margin-top:0.3rem;"><strong>To schedule a recurring task:</strong> Use <code>/schedule</code> in Claude Code for remote agents, or <code>/loop</code> for session-scoped repeats.</p>
+          <p style="margin-top:0.3rem;"><strong>To delegate to team:</strong> Write a runbook in Obsidian, share the relevant skill path, and assign the Linear issue.</p>
+          <p style="margin-top:0.3rem;"><strong>Key directories:</strong></p>
+          <ul style="list-style:none; padding:0; margin-top:0.15rem;">
+            <li style="padding:0.1rem 0;">• Skills: <code>~/.claude/skills/</code></li>
+            <li style="padding:0.1rem 0;">• Vault: <code>/workspace/Obsidian/</code></li>
+            <li style="padding:0.1rem 0;">• Platform: <code>/workspace/GitHub/oso/kuma/</code></li>
+            <li style="padding:0.1rem 0;">• This file: <code>OSO/Internal/Projects/brain-map.html</code></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════ ARCHITECTURE ════════ -->
+<div class="arch-section">
+  <button class="arch-toggle" id="archToggle" onclick="togglePanel('archToggle','archBody')"><span class="arrow">▸</span> Architecture Reference</button>
+  <div class="arch-body" id="archBody">
+    <div class="arch-grid">
+      <div class="arch-panel">
+        <h3>Systems of Record</h3>
+        <table class="sor-table">
+          <thead><tr><th>Domain</th><th>Source of Truth</th><th>Sync</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Tasks</strong></td><td>Linear</td><td style="color:var(--text-dim)">→ Obsidian daily</td></tr>
+            <tr><td><strong>Knowledge</strong></td><td>Obsidian vault</td><td style="color:var(--text-dim)">Informs Linear</td></tr>
+            <tr><td><strong>Code</strong></td><td>GitHub</td><td style="color:var(--text-dim)">PRs link Linear</td></tr>
+            <tr><td><strong>Deliverables</strong></td><td>OSO platform</td><td style="color:var(--text-dim)">→ insights-private</td></tr>
+            <tr><td><strong>Meeting Notes</strong></td><td>Granola, Docs, manual</td><td style="color:var(--text-dim)">→ Telegram → triage</td></tr>
+            <tr><td><strong>Client Comms</strong></td><td>Slack, Telegram, email</td><td style="color:var(--text-dim)">Poorly tracked</td></tr>
+            <tr><td><strong>Memory</strong></td><td>Claude Code + Hermes</td><td style="color:var(--text-dim)">Verify vs live state</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="arch-panel">
+        <h3>Trust Taxonomy</h3>
+        <div class="trust-legend">
+          <div class="trust-legend-item"><span class="sc-trust t-manual" style="font-size:0.6rem;">Manual</span> Human executes</div>
+          <div class="trust-legend-item"><span class="sc-trust t-assisted" style="font-size:0.6rem;">Assisted</span> Agent drafts, human decides</div>
+          <div class="trust-legend-item"><span class="sc-trust t-review" style="font-size:0.6rem;">Review</span> Agent executes, human checks</div>
+          <div class="trust-legend-item"><span class="sc-trust t-auto" style="font-size:0.6rem;">Auto</span> Runs unattended</div>
+          <div class="trust-legend-item"><span class="sc-trust t-critical" style="font-size:0.6rem;">Critical</span> Mutates shared state</div>
+        </div>
+        <h3 style="margin-top:0.75rem;">Constraint Types</h3>
+        <div class="trust-legend">
+          <div class="trust-legend-item"><span class="cb cb-founder" style="margin:0">Founder</span> Carl-only cognition</div>
+          <div class="trust-legend-item"><span class="cb cb-automation" style="margin:0">Automation</span> Manual process that should automate</div>
+          <div class="trust-legend-item"><span class="cb cb-visibility" style="margin:0">Visibility</span> State exists but is hidden</div>
+          <div class="trust-legend-item"><span class="cb cb-process" style="margin:0">Process</span> Missing cadence/routing/review</div>
+          <div class="trust-legend-item"><span class="cb cb-skill" style="margin:0">Skill Gap</span> Capability missing</div>
+        </div>
+        <h3 style="margin-top:0.75rem;">Operating Constraints</h3>
+        <div class="constraint-compact">
+          <div class="cc-item"><span class="cc-num">C1</span> Capture still leaks</div>
+          <div class="cc-item"><span class="cc-num">C2</span> Carl is the scoping bottleneck</div>
+          <div class="cc-item"><span class="cc-num">C3</span> Tactical wins, strategic starves</div>
+          <div class="cc-item"><span class="cc-num">C4</span> Deliverable QA is inconsistent</div>
+          <div class="cc-item"><span class="cc-num">C5</span> Reflection loops are weak</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="footer">Brain Map v5 — Kariba Labs — 2026-05-17</div>
+
+<script>
+  const stages = document.querySelectorAll('.pipe-stage');
+  const rows = document.querySelectorAll('.summary-table tbody tr');
+  const details = document.querySelectorAll('.detail');
+  function activateStage(id) {
+    stages.forEach(s => s.classList.toggle('active', s.dataset.stage === id));
+    rows.forEach(r => r.classList.toggle('active-row', r.dataset.stage === id));
+    details.forEach(d => d.classList.toggle('visible', d.id === `detail-${id}`));
+  }
+  stages.forEach(s => s.addEventListener('click', () => activateStage(s.dataset.stage)));
+  rows.forEach(r => r.addEventListener('click', () => activateStage(r.dataset.stage)));
+  function toggleSkills(btn) { btn.classList.toggle('open'); btn.nextElementSibling.classList.toggle('open'); }
+  function togglePanel(toggleId, bodyId) { document.getElementById(toggleId).classList.toggle('open'); document.getElementById(bodyId).classList.toggle('open'); }
+</script>
+</body>
+</html>
