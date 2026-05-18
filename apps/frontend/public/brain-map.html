@@ -234,6 +234,74 @@
   .cc-num { font-size: 0.55rem; font-weight: 700; color: var(--red); background: var(--red-dim); padding: 0.05rem 0.25rem; border-radius: 3px; flex-shrink: 0; }
 
   .footer { margin-top: 1.5rem; padding-top: 0.75rem; border-top: 1px solid var(--border); text-align: center; color: var(--text-dim); font-size: 0.65rem; }
+  /* ── Mobile ── */
+  @media (max-width: 500px) {
+    body { padding: 0.75rem 0.85rem; }
+    h1 { font-size: 1.15rem; }
+
+    /* Pipeline: 2-row grid instead of horizontal scroll */
+    .pipeline {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 4px;
+    }
+    .pipe-arrow { display: none; }
+    .pipe-stage { min-width: 0; padding: 0.4rem 0.3rem; }
+    .pipe-stage .ps-name { font-size: 0.7rem; }
+    .pipe-stage .ps-constraint { font-size: 0.5rem; }
+
+    /* Summary table: hide Weakest Link column, show only stage + fix + status */
+    .summary-table th:nth-child(3),
+    .summary-table td:nth-child(3) { display: none; }
+    .summary-table td { padding: 0.35rem 0.4rem; font-size: 0.72rem; }
+    .summary-table th { padding: 0.3rem 0.4rem; font-size: 0.55rem; }
+    .st-stage { font-size: 0.72rem; }
+    .cp-badge { font-size: 0.5rem; padding: 0.06rem 0.25rem; }
+
+    /* Detail panels */
+    .detail { padding: 0.75rem 0.85rem; }
+    .detail-header h2 { font-size: 0.95rem; }
+    .flow-cols { gap: 0.5rem; }
+    .flow-card { padding: 0.55rem; font-size: 0.72rem; }
+    .flow-card h3 { font-size: 0.55rem; }
+    .flow-card li { padding: 0.08rem 0; }
+    .cb { font-size: 0.5rem; padding: 0.05rem 0.22rem; margin-right: 0.2rem; }
+
+    /* Meta row: stack instead of inline */
+    .meta-row { flex-direction: column; gap: 0.35rem; font-size: 0.62rem; }
+    .meta-row > span:not(.sf):not(.fm) { display: none; } /* hide pipe separators */
+    .fm-strip { flex-wrap: wrap; }
+
+    /* Fix map: responsive card layout instead of table */
+    .fix-table thead { display: none; }
+    .fix-table, .fix-table tbody, .fix-table tr, .fix-table td {
+      display: block; width: 100%;
+    }
+    .fix-table tr {
+      padding: 0.5rem 0.6rem; margin-bottom: 0.4rem;
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 6px;
+    }
+    .fix-table td {
+      padding: 0.1rem 0; border: none; display: inline;
+    }
+    .fix-table td.ft-stage { display: block; font-size: 0.6rem; font-weight: 600; color: var(--text-dim); margin-bottom: 0.15rem; }
+    .fix-table td.ft-stage::after { content: ""; }
+    .fix-table td.ft-weak { display: block; font-size: 0.72rem; font-weight: 500; color: var(--text); margin-bottom: 0.15rem; }
+    .fix-table td.ft-fix { display: block; font-size: 0.7rem; color: var(--text-dim); margin-bottom: 0.2rem; }
+
+    /* Skills */
+    .skill-chips { gap: 0.2rem; }
+    .skill-chip { font-size: 0.6rem; padding: 0.12rem 0.3rem; }
+    .skill-chip code { font-size: 0.58rem; }
+    .sc-trust { font-size: 0.45rem; }
+
+    /* Arch panels */
+    .arch-grid { grid-template-columns: 1fr; }
+    .arch-panel { padding: 0.65rem; }
+    .sor-table { font-size: 0.65rem; }
+    .sor-table td, .sor-table th { padding: 0.2rem 0.3rem; }
+  }
 </style>
 </head>
 <body>
@@ -259,8 +327,8 @@
   </div>
   <div class="pipe-arrow">→</div>
   <div class="pipe-stage critical" data-stage="strategic">
-    <span class="ps-health ps-red"></span><span class="ps-name">Strategic</span>
-    <span class="ps-constraint">process gap</span>
+    <span class="ps-health ps-amber"></span><span class="ps-name">Strategic</span>
+    <span class="ps-constraint">needs reps</span>
   </div>
   <div class="pipe-arrow">→</div>
   <div class="pipe-stage critical" data-stage="scope">
@@ -292,14 +360,14 @@
       <td><span class="st-health-dot" style="background:var(--amber)"></span></td>
       <td class="st-stage">Capture <span class="cp-badge">Critical</span></td>
       <td class="st-weak"><span class="cb cb-automation">Automation</span> Passive ingestion; client comms fragment across channels</td>
-      <td class="st-fix">Hermes link capture + scheduled sync-head</td>
-      <td><span class="inv inv-upnext">Up Next</span></td>
+      <td class="st-fix">Telegram capture bot live + scheduled sync-head</td>
+      <td><span class="inv inv-tracking">Tracking</span></td>
     </tr>
     <tr data-stage="triage">
       <td><span class="st-health-dot" style="background:var(--amber)"></span></td>
       <td class="st-stage">Triage</td>
       <td class="st-weak"><span class="cb cb-automation">Automation</span> Action items stay in notes; never reach Linear</td>
-      <td class="st-fix">Hermes 4h triage loop</td>
+      <td class="st-fix">Telegram bot /triage with routing buttons</td>
       <td><span class="inv inv-tracking">Tracking</span></td>
     </tr>
     <tr data-stage="tactical">
@@ -310,10 +378,10 @@
       <td><span class="inv inv-upnext">Up Next</span></td>
     </tr>
     <tr data-stage="strategic">
-      <td><span class="st-health-dot" style="background:var(--red)"></span></td>
+      <td><span class="st-health-dot" style="background:var(--amber)"></span></td>
       <td class="st-stage">Strategic <span class="cp-badge">Critical</span></td>
-      <td class="st-weak"><span class="cb cb-process">Process</span> No structured cadence; strategy context decays between reviews</td>
-      <td class="st-fix">Wispr Flow note + monthly strategy review</td>
+      <td class="st-weak"><span class="cb cb-process">Process</span> Review workflow exists but not yet battle-tested over multiple cycles</td>
+      <td class="st-fix">Wispr Flow + project state notes (all 10 clients)</td>
       <td><span class="inv inv-tracking">Tracking</span></td>
     </tr>
     <tr data-stage="scope">
@@ -362,12 +430,12 @@
       <li>Morning briefing ready before the first meeting</li>
     </ul></div>
     <div class="flow-card fc-weak"><h3>Weakest Links</h3><ul>
-      <li><span class="cb cb-automation">Automation</span> Capture is manual-trigger only</li>
       <li><span class="cb cb-visibility">Visibility</span> Client relationship state has no home</li>
-      <li><span class="cb cb-visibility">Visibility</span> Slack/email/Telegram action items leak</li>
+      <li><span class="cb cb-visibility">Visibility</span> Slack/email action items still leak</li>
+      <li><span class="cb cb-automation">Automation</span> Morning briefing not yet scheduled</li>
     </ul></div>
     <div class="flow-card fc-fix"><h3>Fixes</h3><ul>
-      <li>Hermes Telegram link capture <span class="inv inv-upnext">Up Next</span></li>
+      <li>Telegram capture bot (links + notes) <span class="inv inv-tracking">Tracking</span></li>
       <li>Scheduled daily /sync-head <span class="inv inv-upnext">Up Next</span></li>
       <li class="planned">Engagement state files <span class="inv inv-backlog">Backlog</span></li>
     </ul></div>
@@ -408,7 +476,7 @@
       <li><span class="cb cb-process">Process</span> Inbox grows when loop isn't running</li>
     </ul></div>
     <div class="flow-card fc-fix"><h3>Fixes</h3><ul>
-      <li>Hermes /triage-notes 4h loop <span class="inv inv-tracking">Tracking</span></li>
+      <li>Telegram bot /triage with routing buttons <span class="inv inv-tracking">Tracking</span></li>
       <li>Scheduled /weekly-index Sundays <span class="inv inv-tracking">Tracking</span></li>
       <li class="planned">Auto-create Linear from tagged notes <span class="inv inv-backlog">Backlog</span></li>
     </ul></div>
@@ -473,7 +541,7 @@
 <div class="detail" id="detail-strategic">
   <div class="detail-header">
     <h2>Strategic</h2>
-    <span class="health-pill hp-weak">Weak</span>
+    <span class="health-pill hp-fragile">Fragile</span>
     <span class="cp-badge">Critical Path</span>
   </div>
   <div class="flow-cols">
@@ -483,15 +551,15 @@
       <li>Active strategy workstreams stay visible and can move forward between reviews</li>
     </ul></div>
     <div class="flow-card fc-weak"><h3>Weakest Links</h3><ul>
-      <li><span class="cb cb-process">Process</span> No durable cadence or review artifact</li>
-      <li><span class="cb cb-visibility">Visibility</span> Stale assumptions and missing context stay hidden</li>
-      <li><span class="cb cb-founder">Founder</span> Decisions live too much in Carl's head</li>
+      <li><span class="cb cb-process">Process</span> Review workflow exists but not yet battle-tested over multiple cycles</li>
+      <li><span class="cb cb-visibility">Visibility</span> No portfolio view of revenue × attention cost</li>
+      <li><span class="cb cb-founder">Founder</span> Still depends on Carl initiating each review</li>
     </ul></div>
     <div class="flow-card fc-fix"><h3>Fixes</h3><ul>
-      <li>Wispr Flow strategy note + guided questions <span class="inv inv-tracking">Tracking</span></li>
-      <li>Monthly strategy review loop <span class="inv inv-upnext">Up Next</span></li>
+      <li>Wispr Flow + Hermes strategic review workflow <span class="inv inv-tracking">Tracking</span></li>
+      <li>Project state notes for all 10 clients <span class="inv inv-tracking">Tracking</span></li>
       <li>Aggregate pulse data monthly <span class="inv inv-upnext">Up Next</span></li>
-      <li class="planned">Strategy project state notes <span class="inv inv-backlog">Backlog</span></li>
+      <li class="planned">Portfolio dashboard <span class="inv inv-backlog">Backlog</span></li>
     </ul></div>
   </div>
   <div class="meta-row">
@@ -694,14 +762,14 @@
   <table class="fix-table">
     <thead><tr><th>Stage</th><th>Constraint</th><th>Weak Link</th><th>Fix</th><th>Owner</th><th>Focus</th></tr></thead>
     <tbody>
-      <tr><td class="ft-stage">Capture</td><td><span class="cb cb-automation">Auto</span></td><td class="ft-weak">Passive ingestion</td><td class="ft-fix">Hermes Telegram link capture</td><td><span class="ft-owner fo-hermes">Hermes</span></td><td><span class="inv inv-upnext">Up Next</span></td></tr>
+      <tr><td class="ft-stage">Capture</td><td><span class="cb cb-automation">Auto</span></td><td class="ft-weak">Passive ingestion</td><td class="ft-fix">Telegram capture bot (links + notes)</td><td><span class="ft-owner fo-hermes">Hermes</span></td><td><span class="inv inv-tracking">Tracking</span></td></tr>
       <tr><td class="ft-stage">Capture</td><td><span class="cb cb-visibility">Vis</span></td><td class="ft-weak">Client comms untracked</td><td class="ft-fix">Engagement state files</td><td><span class="ft-owner fo-carl">Carl</span></td><td><span class="inv inv-backlog">Backlog</span></td></tr>
       <tr><td class="ft-stage">Capture</td><td><span class="cb cb-automation">Auto</span></td><td class="ft-weak">Morning briefing manual</td><td class="ft-fix">Scheduled daily /sync-head</td><td><span class="ft-owner fo-carl">Carl</span></td><td><span class="inv inv-upnext">Up Next</span></td></tr>
       <tr><td class="ft-stage">Triage</td><td><span class="cb cb-automation">Auto</span></td><td class="ft-weak">No Linear bridge</td><td class="ft-fix">Auto-create issues from tags</td><td><span class="ft-owner fo-hermes">Hermes</span></td><td><span class="inv inv-backlog">Backlog</span></td></tr>
-      <tr><td class="ft-stage">Triage</td><td><span class="cb cb-process">Proc</span></td><td class="ft-weak">Inbox backlog</td><td class="ft-fix">Hermes /triage-notes 4h loop</td><td><span class="ft-owner fo-hermes">Hermes</span></td><td><span class="inv inv-tracking">Tracking</span></td></tr>
+      <tr><td class="ft-stage">Triage</td><td><span class="cb cb-process">Proc</span></td><td class="ft-weak">Inbox backlog</td><td class="ft-fix">Telegram bot /triage with routing buttons</td><td><span class="ft-owner fo-hermes">Hermes</span></td><td><span class="inv inv-tracking">Tracking</span></td></tr>
       <tr><td class="ft-stage">Tactical</td><td><span class="cb cb-skill">Skill</span></td><td class="ft-weak">Calendar-blind planning</td><td class="ft-fix">Meeting-aware /today</td><td><span class="ft-owner fo-carl">Carl</span></td><td><span class="inv inv-upnext">Up Next</span></td></tr>
       <tr><td class="ft-stage">Tactical</td><td><span class="cb cb-visibility">Vis</span></td><td class="ft-weak">No team visibility</td><td class="ft-fix">Shared Monday pulse</td><td><span class="ft-owner fo-carl">Carl</span></td><td><span class="inv inv-upnext">Up Next</span></td></tr>
-      <tr><td class="ft-stage">Strategic</td><td><span class="cb cb-process">Proc</span></td><td class="ft-weak">No structured cadence; strategy context decays between reviews</td><td class="ft-fix">Wispr Flow note + monthly strategy review</td><td><span class="ft-owner fo-carl">Carl</span></td><td><span class="inv inv-tracking">Tracking</span></td></tr>
+      <tr><td class="ft-stage">Strategic</td><td><span class="cb cb-process">Proc</span></td><td class="ft-weak">Review workflow needs reps</td><td class="ft-fix">Wispr Flow + project state notes (all 10 clients)</td><td><span class="ft-owner fo-hermes">Hermes</span></td><td><span class="inv inv-tracking">Tracking</span></td></tr>
       <tr><td class="ft-stage">Scope</td><td><span class="cb cb-founder">Founder</span></td><td class="ft-weak">Carl-only bottleneck</td><td class="ft-fix">Delegation runbook</td><td><span class="ft-owner fo-team">Team</span></td><td><span class="inv inv-planned">Planned</span></td></tr>
       <tr><td class="ft-stage">Execute</td><td><span class="cb cb-automation">Auto</span></td><td class="ft-weak">No quality monitoring</td><td class="ft-fix">Hermes weekly /udm-audit</td><td><span class="ft-owner fo-hermes">Hermes</span></td><td><span class="inv inv-upnext">Up Next</span></td></tr>
       <tr><td class="ft-stage">Execute</td><td><span class="cb cb-automation">Auto</span></td><td class="ft-weak">Verification skipped</td><td class="ft-fix">notebook-verify post-hook</td><td><span class="ft-owner fo-agent">Agent</span></td><td><span class="inv inv-upnext">Up Next</span></td></tr>
@@ -817,7 +885,7 @@
   </div>
 </div>
 
-<div class="footer">Brain Map v5 — Kariba Labs — 2026-05-17</div>
+<div class="footer">Brain Map v6 — Kariba Labs — 2026-05-18</div>
 
 <script>
   const stages = document.querySelectorAll('.pipe-stage');
